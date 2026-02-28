@@ -1,4 +1,4 @@
-from functions import RedisClient
+from sharedstore import RedisClient
 
 
 class Bucket:

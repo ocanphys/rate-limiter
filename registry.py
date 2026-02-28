@@ -1,5 +1,5 @@
 import logging
-from functions import RedisClient
+from sharedstore import RedisClient
 from bucket import Bucket
 from config import MAX_USERS, USER_MAX_TOKENS, MASTER_MAX_TOKENS
 

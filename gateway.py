@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 from bucket import Bucket
 from config import MASTER_MAX_TOKENS, MAX_USERS, REDIS_DB, REDIS_HOST, REDIS_PORT, REFILL_INTERVAL, USER_MAX_TOKENS
-from functions import RedisClient
+from sharedstore import RedisClient
 from refill import start_background_thread
 from registry import BucketRegistry
 
@@ -34,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def handle(request: Request):
-    ip = request.headers.get("X-Forwarded-For", request.client.host).split(",")[0].strip()
+    ip = request.client.host
     bucket_key = f"bucket:{ip}"
     client: RedisClient = request.app.state.client
     registry: BucketRegistry = request.app.state.registry

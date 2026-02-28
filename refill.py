@@ -3,7 +3,7 @@ import os
 import socket
 import threading
 import time
-from functions import RedisClient
+from sharedstore import RedisClient
 from bucket import Bucket
 from registry import BucketRegistry
 from config import (
