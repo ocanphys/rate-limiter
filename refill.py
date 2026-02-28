@@ -19,6 +19,25 @@ logger = logging.getLogger(__name__)
 
 
 # KEYS[1] = user bucket key, KEYS[2] = master bucket key
+# ARGV[1] = user max_tokens
+# Atomically reads the current token count, recomputes the deficit, deducts it
+# from the master, and tops the user bucket up to max — all in one round-trip.
+# Recomputing deficit inside the script prevents a race where a request consumes
+# tokens between the Python-side read and the SET.
+# Returns 1 if topped up, 0 if the master had insufficient tokens.
+_TOPUP_SCRIPT = """
+local user_max = tonumber(ARGV[1])
+local current = tonumber(redis.call('GET', KEYS[1])) or 0
+local deficit = user_max - current
+if deficit <= 0 then return 0 end
+local master = tonumber(redis.call('GET', KEYS[2])) or 0
+if master < deficit then return 0 end
+redis.call('SET', KEYS[2], master - deficit)
+redis.call('SET', KEYS[1], user_max)
+return 1
+"""
+
+# KEYS[1] = user bucket key, KEYS[2] = master bucket key
 # ARGV[1] = tokens to refund, ARGV[2] = master max_tokens (cap)
 # Atomically returns the user's token allocation to the master and deletes the
 # idle bucket in a single round-trip, so concurrent registrations immediately
@@ -94,15 +113,19 @@ def refill_cycle(
                 master.max_tokens,
             )
         else:
-            # User was active. Draw their deficit from the master and restore to max.
-            deficit = user_max_tokens - current
-            if master.use_tokens(deficit):
-                client.set_value(bucket_key, str(user_max_tokens))
+            # User was active. Atomically recompute deficit, draw from master, and
+            # restore the bucket to max in one Lua script to avoid races with
+            # concurrent requests consuming tokens between the read and the SET.
+            topped_up = client.eval_script(
+                _TOPUP_SCRIPT,
+                [bucket_key, master._key],
+                [user_max_tokens],
+            )
+            if topped_up:
                 logger.info(
-                    "%s refilled (was %d, deficit %d drawn from master)",
+                    "%s refilled (was %d, deficit drawn from master)",
                     user_id,
                     current,
-                    deficit,
                 )
             else:
                 # Master ran out of tokens earlier in this cycle; skip this user.
