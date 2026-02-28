@@ -4,7 +4,7 @@ REDIS_PORT = 6379
 REDIS_DB = 0
 
 # Token bucket parameters
-USER_MAX_TOKENS = 200  # max tokens per user bucket
+USER_MAX_TOKENS = 20  # max tokens per user bucket
 MASTER_MAX_TOKENS = 1000  # total tokens available per refill cycle
 # controls global throughput: max fully-refillable users = MASTER_MAX_TOKENS // USER_MAX_TOKENS
 

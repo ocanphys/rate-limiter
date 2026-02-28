@@ -24,10 +24,6 @@ class RedisClient:
         """Retrieve a value by key. Returns None if not found."""
         return self._client.get(key)
 
-    def hset(self, hash_key: str, field: str, value: str):
-        """Set a field in a Redis Hash."""
-        self._client.hset(hash_key, field, value)
-
     def hdel(self, hash_key: str, field: str):
         """Delete a field from a Redis Hash."""
         self._client.hdel(hash_key, field)
